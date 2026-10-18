@@ -1,0 +1,25 @@
+import React,{useEffect,useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import {BrowserRouter,Routes,Route,Navigate,useLocation,useParams,Link} from 'react-router-dom';
+import {api} from '@/lib/api';
+import UserNav from '@/components/UserNav';
+import AppBootstrap from '@/components/AppBootstrap';
+import RequestCollections from '@/components/request-collections/RequestCollections';
+import Dashboard from '@/pages/Dashboard';
+import RestProjects from '@/pages/RestProjects';
+import SoapProjects from '@/pages/SoapProjects';
+import RestProject from '@/pages/RestProject';
+import SoapProject from '@/pages/SoapProject';
+import RestLogs from '@/pages/RestLogs';
+import SoapLogs from '@/pages/SoapLogs';
+import Admin from '@/pages/Admin';
+import './styles.css';
+type Account={authenticated:boolean;displayName?:string;email?:string;isAdmin?:boolean;status?:string};
+function Collection(){const {id}=useParams();return <RequestCollections key={id||'index'} initialCollectionId={id}/>;}
+function Login(){const [key,setKey]=useState(''),[error,setError]=useState(''),[busy,setBusy]=useState(false);return <section className="mx-auto max-w-md space-y-5 rounded-xl border border-gray-200 bg-white p-8 shadow-sm"><h1 className="text-2xl font-bold">Welcome to MockingBird</h1><p className="text-gray-600">Mock REST and SOAP services. Organize and test requests.</p><a className="block rounded bg-indigo-600 px-4 py-3 text-center font-semibold text-white" href="/api/auth/google">Sign in with Google</a><form className="space-y-3" onSubmit={async e=>{e.preventDefault();setBusy(true);try{await api('/api/auth/key','POST',{apiKey:key});window.location.assign('/');}catch(e){setError((e as Error).message);setBusy(false);}}}><label className="block text-sm">Or sign in with your existing API key<input aria-label="API key" type="password" autoComplete="current-password" value={key} onChange={e=>setKey(e.target.value)} className="mt-2 w-full rounded border p-2"/></label><button disabled={busy||!key} className="rounded border px-4 py-2">{busy?'Signing in…':'Sign in with API key'}</button></form>{error&&<p role="alert" className="text-red-600">{error}</p>}</section>;}
+function Access({account}:{account:Account}){const [status,setStatus]=useState(account.status),[error,setError]=useState('');return <section className="mx-auto max-w-lg space-y-4 rounded bg-white p-8"><h1 className="text-xl font-bold">Application access</h1><p>Signed in as {account.email}.</p><p>{status==='pending'?'Your access request is awaiting approval.':status==='rejected'?'Your previous request was declined. You can request access again.':'Request access to use MockingBird.'}</p>{status!=='pending'&&<button className="rounded bg-indigo-600 px-4 py-2 text-white" onClick={async()=>{try{await api('/api/access/request','POST');setStatus('pending');}catch(e){setError((e as Error).message);}}}>Request access</button>}{error&&<p role="alert">{error}</p>}</section>;}
+function App(){const [account,setAccount]=useState<Account|null>(null),[error,setError]=useState('');const location=useLocation();useEffect(()=>{api<Account>('/api/auth/me').then(setAccount).catch(e=>setError(e.message));},[]);if(error)return <main className="p-8" role="alert">{error}<button onClick={()=>window.location.reload()}>Retry</button></main>;if(!account)return <p role="status" className="p-8">Loading account…</p>;
+ return <><nav className="bg-indigo-900 shadow-md"><div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3"><Link to="/" className="text-lg font-bold text-white">🐦 Mocking Bird - a Webservice Mocker</Link><UserNav displayName={account.displayName||null} isAdmin={!!account.isAdmin}/></div></nav><main className="page-content mx-auto max-w-6xl px-4 py-8">{!account.authenticated?(location.pathname==='/login'?<Login/>:<Navigate to="/login" replace/>):account.status!=='approved'?<Access account={account}/>:<><AppBootstrap/><Routes><Route path="/login" element={<Navigate to="/" replace/>}/><Route path="/" element={<Dashboard/>}/><Route path="/rest" element={<RestProjects/>}/><Route path="/soap" element={<SoapProjects/>}/><Route path="/rest-project/:id" element={<RestProject/>}/><Route path="/project/:id" element={<SoapProject/>}/><Route path="/rest-project/:id/logs" element={<RestLogs/>}/><Route path="/project/:id/logs" element={<SoapLogs/>}/><Route path="/request-collections" element={<Collection/>}/><Route path="/request-collections/:id" element={<Collection/>}/><Route path="/tester" element={<Navigate to={'/request-collections'+location.search} replace/>}/><Route path="/admin/*" element={account.isAdmin?<Admin/>:<Navigate to="/" replace/>}/><Route path="*" element={<p>Page not found. <Link to="/">Return home</Link></p>}/></Routes></>}</main></>;
+}
+try{const theme=localStorage.getItem('mockingbird-theme')||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=theme;document.documentElement.style.colorScheme=theme;}catch{}
+createRoot(document.getElementById('root')!).render(<React.StrictMode><BrowserRouter><App/></BrowserRouter></React.StrictMode>);

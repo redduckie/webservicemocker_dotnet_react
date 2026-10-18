@@ -1,0 +1,14 @@
+**/node_modules/
+**/bin/
+**/obj/
+**/dist/
+.env*
+!.env.example
+**/appsettings.Local.json
+**/wwwroot/
+.vs/
+*.user
+TestResults/
+
+**/TestResults.txt
+
